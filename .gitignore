@@ -1,0 +1,22 @@
+# Node.js
+node_modules
+.next/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Model files
+model.pkl
+api/model.pkl
+
+# Code Assistants
+claude.md
+gemini.md
+
+# OS-specific
+.DS_Store
