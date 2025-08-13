@@ -10,13 +10,17 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# Model files
-model.pkl
-api/model.pkl
 
-# Code Assistants
+# User-specified
 claude.md
 gemini.md
 
 # OS-specific
 .DS_Store
+
+# Gradio
+flagged/
+
+# Datasets
+datasets/
+.vercel
