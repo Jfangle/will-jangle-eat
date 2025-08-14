@@ -1,5 +1,6 @@
-fastai>=2.7.0
-gradio>=4.0.0
-torch>=1.13.0
-torchvision>=0.14.0
+# /api/requirements.txt
+fastai==2.7.15
+gradio==4.12.0
+torch==2.1.0
+torchvision==0.16.0
 pillow>=9.0.0
