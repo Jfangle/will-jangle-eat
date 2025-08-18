@@ -1,118 +1,135 @@
 import { useState } from 'react'
-import styles from './ImageClassifier.module.css'
 
 export default function ImageClassifier() {
   const [selectedFile, setSelectedFile] = useState(null)
-  const [prediction, setPrediction] = useState('')
+  const [previewUrl, setPreviewUrl] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [imagePreview, setImagePreview] = useState('')
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
 
-  const handleFileChange = (event) => {
+  const handleFileSelect = (event) => {
     const file = event.target.files[0]
     if (file) {
       setSelectedFile(file)
-      setError('')
-      setPrediction('')
-      
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target.result)
-      }
-      reader.readAsDataURL(file)
+      setResult(null)
+      setError(null)
+
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+
+      predictImage(file)
     }
   }
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    
-    if (!selectedFile) {
-      setError('Please select an image first!')
-      return
-    }
-
+  const predictImage = async (file) => {
     setLoading(true)
-    setError('')
-    setPrediction('')
+    setError(null)
 
     try {
       const formData = new FormData()
-      formData.append('file', selectedFile)
+      formData.append('file', file)
 
-      // Use localhost:7860 for local development, /api/predict for production
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:7860/api/predict'
-        : '/api/predict'
-        
-      const response = await fetch(apiUrl, {
+      console.log('Sending prediction request to FastAPI...')
+      
+      const response = await fetch('https://defijangle-will-jangle-eat.hf.space/api/predict', {
         method: 'POST',
-        body: formData,
+        body: formData
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`API request failed: ${response.status}`)
       }
 
       const result = await response.json()
-      
-      if (result.error) {
-        setError(result.error)
-      } else {
-        setPrediction(result.prediction || result)
-      }
+      console.log('API response:', result)
+
+      setResult({
+        prediction: result.prediction,
+        confidence: result.confidence,
+        all_scores: result.all_scores,
+        will_eat: result.will_eat
+      })
+
     } catch (err) {
+      console.error('Prediction error:', err)
       setError(`Error: ${err.message}`)
     } finally {
       setLoading(false)
     }
   }
 
+  const getVerdict = (prediction) => {
+    if (!prediction) return null
+
+    switch (prediction) {
+      case 'not_durian_edible':
+        return {
+          message: "Jangle will eat this! 🍽️",
+          className: "will-eat"
+        }
+      case 'durian':
+        return {
+          message: "Jangle will NOT eat this! 🚫 (It's durian - he hates durian)",
+          className: "will-not-eat"
+        }
+      case 'inedible':
+        return {
+          message: "Jangle will NOT eat this! 🚫 (Not food)",
+          className: "will-not-eat"
+        }
+      default:
+        return {
+          message: "Hmm, I'm not sure about this one...",
+          className: "will-not-eat"
+        }
+    }
+  }
+
   return (
-    <div className={styles.container}>
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <div className={styles.uploadSection}>
-          <input
-            type="file"
-            id="imageInput"
-            accept="image/*"
-            onChange={handleFileChange}
-            className={styles.fileInput}
-          />
-          <label htmlFor="imageInput" className={styles.fileLabel}>
-            Choose an image
-          </label>
+    <div className="upload-area">
+      <div className="file-input-wrapper">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="file-input"
+        />
+        <div className="file-input-button">
+          {selectedFile ? 'Choose Different Image' : 'Choose an Image'}
         </div>
+      </div>
 
-        {imagePreview && (
-          <div className={styles.preview}>
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className={styles.previewImage}
-            />
-          </div>
-        )}
+      {previewUrl && (
+        <div className="preview-container">
+          <img src={previewUrl} alt="Preview" className="preview-image" />
+        </div>
+      )}
 
-        <button
-          type="submit"
-          disabled={!selectedFile || loading}
-          className={styles.submitButton}
-        >
-          {loading ? 'Analyzing...' : 'Will Jangle Eat This?'}
-        </button>
-      </form>
+      {loading && (
+        <div className="loading"></div>
+      )}
 
       {error && (
-        <div className={styles.error}>
+        <div className="error">
           {error}
         </div>
       )}
 
-      {prediction && (
-        <div className={styles.result}>
-          <h2>Jangle's Verdict:</h2>
-          <p className={styles.verdict}>{prediction}</p>
+      {result && !loading && (
+        <div className="result">
+          <div className={`verdict ${getVerdict(result.prediction)?.className}`}>
+            {getVerdict(result.prediction)?.message}
+          </div>
+          {result.confidence && (
+            <div className="confidence">
+              Confidence: {Math.round(result.confidence * 100)}%
+            </div>
+          )}
+          {result.all_scores && (
+            <div className="confidence">
+              All scores: {JSON.stringify(result.all_scores, null, 2)}
+            </div>
+          )}
         </div>
       )}
     </div>
