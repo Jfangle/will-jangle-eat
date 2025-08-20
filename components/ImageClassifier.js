@@ -1,54 +1,74 @@
 import { useState } from 'react'
 
 export default function ImageClassifier() {
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [imageUrl, setImageUrl] = useState('')
   const [previewUrl, setPreviewUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0]
-    if (file) {
-      setSelectedFile(file)
-      setResult(null)
-      setError(null)
-
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-
-      predictImage(file)
+  const handleUrlSubmit = async (e) => {
+    e.preventDefault()
+    if (!imageUrl.trim()) {
+      setError('Please enter an image URL')
+      return
     }
+
+    setResult(null)
+    setError(null)
+    setPreviewUrl(imageUrl)
+    
+    await predictImageFromUrl(imageUrl)
   }
 
-  const predictImage = async (file) => {
+  const handleUrlChange = (e) => {
+    setImageUrl(e.target.value)
+    if (error) setError(null)
+  }
+
+  const predictImageFromUrl = async (imageUrl) => {
     setLoading(true)
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      console.log('Sending prediction request to FastAPI...')
+      console.log('Loading Gradio client...')
       
-      const response = await fetch('https://defijangle-will-jangle-eat.hf.space/api/predict', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`)
+      // Dynamic import to load Gradio client
+      const { client } = await import('@gradio/client')
+      
+      console.log('Fetching image from URL:', imageUrl)
+      
+      // Fetch the image as blob
+      const imageResponse = await fetch(imageUrl)
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`)
       }
+      const imageBlob = await imageResponse.blob()
 
-      const result = await response.json()
+      console.log('Connecting to Gradio app...')
+      
+      // Connect to Gradio app
+      const app = await client("https://defijangle-will-jangle-eat.hf.space/--replicas/pgkvd/")
+      
+      console.log('Making prediction request...')
+      
+      // Make prediction
+      const result = await app.predict("/predict", [imageBlob])
+      
       console.log('API response:', result)
 
-      setResult({
-        prediction: result.prediction,
-        confidence: result.confidence,
-        all_scores: result.all_scores,
-        will_eat: result.will_eat
-      })
+      // Extract data from result
+      if (result && result.data && result.data.length > 0) {
+        const data = result.data[0]
+        setResult({
+          prediction: data.prediction || 'unknown',
+          confidence: data.confidence || 0,
+          all_scores: data.all_scores || {},
+          will_eat: data.will_eat || false
+        })
+      } else {
+        throw new Error('Unexpected response format from API')
+      }
 
     } catch (err) {
       console.error('Prediction error:', err)
@@ -87,17 +107,36 @@ export default function ImageClassifier() {
 
   return (
     <div className="upload-area">
-      <div className="file-input-wrapper">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="file-input"
-        />
-        <div className="file-input-button">
-          {selectedFile ? 'Choose Different Image' : 'Choose an Image'}
+      <form onSubmit={handleUrlSubmit} className="url-form">
+        <div className="url-input-wrapper">
+          <input
+            type="url"
+            value={imageUrl}
+            onChange={handleUrlChange}
+            placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+            className="url-input"
+            disabled={loading}
+          />
+          <button type="submit" className="submit-button" disabled={loading || !imageUrl.trim()}>
+            {loading ? 'Analyzing...' : 'Analyze Image'}
+          </button>
         </div>
-      </div>
+      </form>
+      
+      {/* Example button for quick testing */}
+      <button 
+        type="button" 
+        onClick={() => {
+          const busUrl = "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png"
+          setImageUrl(busUrl)
+          setPreviewUrl(busUrl)
+          predictImageFromUrl(busUrl)
+        }}
+        className="example-button"
+        disabled={loading}
+      >
+        Test with Bus Image
+      </button>
 
       {previewUrl && (
         <div className="preview-container">
