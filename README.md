@@ -26,7 +26,7 @@ The model was trained on a combination of:
 
 - **Framework:** [Next.js](https://nextjs.org/) (React)
 - **API Client:** [@gradio/client](https://www.npmjs.com/package/@gradio/client)
-- **Model Hosting:** [Hugging Face Spaces](https://huggingface.co/spaces)
+- **Model Hosting:** [Hugging Face Spaces](https://huggingface.co/spaces/DefiJangle/will-jangle-eat/)
 - **Base Model:** [ResNet34](https://pytorch.org/hub/pytorch_vision_resnet/)
 
 ## Getting Started
